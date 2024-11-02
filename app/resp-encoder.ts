@@ -5,6 +5,10 @@ enum RESPCommands {
   GET = "GET",
 }
 
+enum RESPAttributes {
+  EXPIRY = "PX",
+}
+
 export class RESPEncoder {
   private store: Map<string, string> = new Map();
 
@@ -31,14 +35,24 @@ export class RESPEncoder {
   }
 
   private cmdSet(data: string[]): string {
-    if (data.length !== 2) {
+    if (data.length < 2) {
       return this.serialize(new Error("SET command requires 2 arguments"));
     }
 
     const key = data[0];
     const value = data[1];
-
     this.store.set(key, value);
+
+    const hasExpiry =
+      data.length === 4 && data[2].toUpperCase() === RESPAttributes.EXPIRY;
+    const expiryTime = hasExpiry ? parseInt(data[3]) : null;
+
+    if (expiryTime) {
+      setTimeout(() => {
+        this.store.delete(key);
+      }, expiryTime);
+    }
+
     return this.serialize("OK");
   }
 
